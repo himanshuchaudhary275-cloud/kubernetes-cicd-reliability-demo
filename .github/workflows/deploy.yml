@@ -1,0 +1,64 @@
+name: Kubernetes CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Show environment
+        shell: powershell
+        run: |
+          docker --version
+          kubectl version --client
+          minikube status
+
+      - name: Build Docker image
+        shell: powershell
+        run: |
+          docker build -t k8s-cicd-demo:${{ github.sha }} ./app
+
+      - name: Load image into Minikube
+        shell: powershell
+        run: |
+          minikube image load k8s-cicd-demo:${{ github.sha }}
+
+      - name: Deploy namespace
+        shell: powershell
+        run: |
+          kubectl apply -f k8s/namespace.yaml
+
+      - name: Deploy Redis
+        shell: powershell
+        run: |
+          kubectl apply -f k8s/redis.yaml
+
+      - name: Deploy backend
+        shell: powershell
+        run: |
+          kubectl apply -f k8s/app-deployment.yaml
+          kubectl apply -f k8s/app-service.yaml
+
+      - name: Update backend image
+        shell: powershell
+        run: |
+          kubectl set image deployment/backend backend=k8s-cicd-demo:${{ github.sha }} -n demo
+
+      - name: Wait for backend rollout
+        shell: powershell
+        run: |
+          kubectl rollout status deployment/backend -n demo --timeout=120s
+
+      - name: Verify deployment
+        shell: powershell
+        run: |
+          kubectl get pods -n demo
+          kubectl get svc -n demo
+          kubectl get deployment -n demo
