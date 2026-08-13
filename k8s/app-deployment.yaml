@@ -36,7 +36,7 @@ spec:
 
           env:
             - name: REDIS_HOST
-              value: "redis"
+              value: "redis-broken"
 
             - name: REDIS_PORT
               value: "6379"
